@@ -8,3 +8,7 @@ import (
 func ParseGoFile(sourcefile string) (*model.Package, error) {
 	return mockgen.ParseGoFile(sourcefile)
 }
+
+func ParsePackage(pkg string, symbols []string) (*model.Package, error) {
+	return mockgen.ParsePackage(pkg, symbols)
+}

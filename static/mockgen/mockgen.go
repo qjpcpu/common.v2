@@ -20,14 +20,19 @@ package mockgen
 
 import (
 	"bytes"
-	"github.com/qjpcpu/common.v2/static/mockgen/model"
 	"encoding/json"
 	"log"
 	"os/exec"
+
+	"github.com/qjpcpu/common.v2/static/mockgen/model"
 )
 
 func ParseGoFile(file string) (*model.Package, error) {
 	return sourceMode(file)
+}
+
+func ParsePackage(pkg string, symbols []string) (*model.Package, error) {
+	return reflectMode(pkg, symbols)
 }
 
 // createPackageMap returns a map of import path to package name
