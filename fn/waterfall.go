@@ -146,7 +146,11 @@ func (r *funcRunner) addFunc(f Function) *funcRunner {
 
 func (r *funcRunner) pickErr(out []reflect.Value) (error, bool) {
 	if len(out) > 0 && isErrType(out[len(out)-1].Type()) {
-		return out[len(out)-1].Interface().(error), true
+		if e := out[len(out)-1].Interface(); e == nil || e.(error) == nil {
+			return nil, true
+		} else {
+			return e.(error), true
+		}
 	}
 	return nil, false
 }
@@ -181,7 +185,7 @@ func (r *funcRunner) run(args ...interface{}) (err error) {
 		}
 		input = r.outToInFuncList[i](out)
 	}
-	if err != nil {
+	if err != nil && r.errFunc != nil {
 		f := reflect.ValueOf(r.errFunc)
 		f.Call([]reflect.Value{reflect.ValueOf(err)})
 	}
