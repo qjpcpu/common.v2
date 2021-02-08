@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 )
 
 // Exec command and replace current process
@@ -48,9 +49,10 @@ func WithWd(w string) CommandOpt {
 }
 
 type Output struct {
-	r     io.Reader
-	donec chan error
-	err   error
+	r           *bytes.Buffer
+	donec       chan error
+	streamDonce chan struct{}
+	err         error
 }
 
 func (co *Output) Stream() io.Reader {
@@ -82,14 +84,23 @@ func (co *Output) ForEachLine(fn func(string)) *Output {
 	if co.r == nil {
 		return co
 	}
-	scanner := bufio.NewScanner(co.Stream())
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
+	r := io.TeeReader(co.r, buf)
+	defer func() { co.r = buf }()
+
+RESCAN:
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
-		buf.WriteString(line + "\n")
 		fn(line)
 	}
-	co.r = buf
+	select {
+	case <-co.streamDonce:
+	default:
+		time.Sleep(time.Millisecond * 10)
+		goto RESCAN
+	}
+
 	return co
 }
 
@@ -97,16 +108,17 @@ func (co *Output) String() string {
 	if co.r == nil {
 		return ""
 	}
-	out, err := ioutil.ReadAll(co.r)
-	if err == nil {
-		co.r = bytes.NewReader(out)
-	}
-	return string(out)
+	<-co.streamDonce
+	buf := &bytes.Buffer{}
+	r := io.TeeReader(co.r, buf)
+	data, _ := ioutil.ReadAll(r)
+	co.r = buf
+	return string(data)
 }
 
 // RunCommand background
 func RunCommand(c string, opts ...CommandOpt) (out *Output) {
-	out = &Output{donec: make(chan error, 1)}
+	out = &Output{donec: make(chan error, 1), streamDonce: make(chan struct{}, 1)}
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "bash"
@@ -138,17 +150,23 @@ func RunCommand(c string, opts ...CommandOpt) (out *Output) {
 		out.err = err
 		return
 	}
+
 	outReader := io.MultiReader(stdout, stderr)
 	if err = cmd.Start(); err != nil {
 		close(out.donec)
 		out.err = err
 		return
 	}
+
+	out.r = new(bytes.Buffer)
+	go func() {
+		defer close(out.streamDonce)
+		io.Copy(out.r, outReader)
+	}()
 	go func() {
 		defer close(out.donec)
 		out.donec <- cmd.Wait()
 	}()
 
-	out.r = outReader
 	return
 }
