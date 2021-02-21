@@ -1,6 +1,7 @@
 package fp
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -540,4 +541,61 @@ func (suite *ListComprehensionTestSuite) TestSub() {
 	suite.ElementsMatch([]string{"a", "b", "c", "b"}, l1)
 	suite.ElementsMatch([]string{"c", "b"}, l2)
 	suite.ElementsMatch([]string{"a"}, l3)
+}
+
+func (suite *ListComprehensionTestSuite) TestOption() {
+	l1 := []string{"a", "b", "c", "b"}
+	l2 := ListOf(l1).Map(func(v string) Option {
+		if v == "a" {
+			return NewOption(1)
+		}
+		return None
+	}).OptionValue(IntOptionFilter).MustGetResult().([]int)
+	suite.ElementsMatch(l2, []int{1})
+}
+
+func (suite *ListComprehensionTestSuite) TestOptionEmptyList() {
+	l1 := []string{"a", "b", "c", "b"}
+	l2 := ListOf(l1).Map(func(v string) Option {
+		return None
+	}).OptionValue(Int64OptionFilter).MustGetResult().([]int64)
+	suite.ElementsMatch(l2, []int64{})
+}
+
+func (suite *ListComprehensionTestSuite) TestOptionCustomType() {
+	l1 := []string{"a", "b", "c", "b"}
+	type st struct{ S string }
+	l2 := ListOf(l1).Map(func(v string) Option {
+		if v == "a" {
+			return NewOption(st{S: v})
+		}
+		return None
+	}).OptionValue(func(st) {}).MustGetResult().([]st)
+	suite.Len(l2, 1)
+	suite.Equal("a", l2[0].S)
+}
+
+func (suite *ListComprehensionTestSuite) TestOptionInterface() {
+	l1 := []error{errors.New("test"), nil}
+	l2 := ListOf(l1).Map(func(v error) Option {
+		return NewOption(v)
+	}).OptionValue(func(error) {}).MustGetResult().([]error)
+	suite.Len(l2, 1)
+	suite.Equal("test", l2[0].Error())
+}
+
+func (suite *ListComprehensionTestSuite) TestOptionCustomPtrType() {
+	l1 := []string{"a", "b", "c", "b"}
+	type st struct{ S string }
+	l2 := ListOf(l1).Map(func(v string) Option {
+		if v == "a" {
+			return NewOption(&st{S: v})
+		} else if v == "b" {
+			var st1 *st
+			return NewOption(st1)
+		}
+		return None
+	}).OptionValue(func(*st) {}).MustGetResult().([]*st)
+	suite.Len(l2, 1)
+	suite.Equal("a", l2[0].S)
 }
