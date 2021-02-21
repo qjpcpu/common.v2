@@ -373,8 +373,8 @@ func (l *_List) Last() *ResultValue {
 }
 
 // OptionValue map Option list to its values, the list must be Option list
-func (l *_List) OptionValue(typeFilter interface{}) *_List {
-	valTyp := reflect.TypeOf(typeFilter).In(0)
+func (l *_List) OptionValue(typeAsserter interface{}) *_List {
+	valTyp := reflect.TypeOf(typeAsserter).In(0)
 	ft := reflect.FuncOf([]reflect.Type{optionType}, []reflect.Type{valTyp}, false)
 	fv := reflect.MakeFunc(ft, func(in []reflect.Value) []reflect.Value {
 		val := in[0].Interface().(Option).Val()

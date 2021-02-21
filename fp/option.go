@@ -50,14 +50,20 @@ func IsSome(o Option) bool { return o.IsSome() }
 // IsNone nothing in option
 func IsNone(o Option) bool { return o.IsNone() }
 
-/* common type filters */
+/* common type asserter */
 var (
-	StrOptionFilter    = func(string) {}
-	IntOptionFilter    = func(int) {}
-	Int64OptionFilter  = func(int64) {}
-	Int32OptionFilter  = func(int32) {}
-	UintOptionFilter   = func(uint) {}
-	Uint64OptionFilter = func(uint64) {}
-	Uint32OptionFilter = func(uint32) {}
-	ErrOptionFilter    = func(error) {}
+	StrTypeAsserter    = func(string) {}
+	IntTypeAsserter    = func(int) {}
+	Int64TypeAsserter  = func(int64) {}
+	Int32TypeAsserter  = func(int32) {}
+	UintTypeAsserter   = func(uint) {}
+	Uint64TypeAsserter = func(uint64) {}
+	Uint32TypeAsserter = func(uint32) {}
+	ErrTypeAsserter    = func(error) {}
 )
+
+func TypeAsserter(v interface{}) interface{} {
+	typ := reflect.TypeOf(v)
+	ft := reflect.FuncOf([]reflect.Type{typ}, []reflect.Type{}, false)
+	return reflect.MakeFunc(ft, func([]reflect.Value) []reflect.Value { return nil }).Interface()
+}

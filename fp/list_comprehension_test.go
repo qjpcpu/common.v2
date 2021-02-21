@@ -550,7 +550,7 @@ func (suite *ListComprehensionTestSuite) TestOption() {
 			return NewOption(1)
 		}
 		return None
-	}).OptionValue(IntOptionFilter).MustGetResult().([]int)
+	}).OptionValue(IntTypeAsserter).MustGetResult().([]int)
 	suite.ElementsMatch(l2, []int{1})
 }
 
@@ -558,7 +558,7 @@ func (suite *ListComprehensionTestSuite) TestOptionEmptyList() {
 	l1 := []string{"a", "b", "c", "b"}
 	l2 := ListOf(l1).Map(func(v string) Option {
 		return None
-	}).OptionValue(Int64OptionFilter).MustGetResult().([]int64)
+	}).OptionValue(Int64TypeAsserter).MustGetResult().([]int64)
 	suite.ElementsMatch(l2, []int64{})
 }
 
@@ -571,6 +571,19 @@ func (suite *ListComprehensionTestSuite) TestOptionCustomType() {
 		}
 		return None
 	}).OptionValue(func(st) {}).MustGetResult().([]st)
+	suite.Len(l2, 1)
+	suite.Equal("a", l2[0].S)
+}
+
+func (suite *ListComprehensionTestSuite) TestOptionTypeAsserter() {
+	l1 := []string{"a", "b", "c", "b"}
+	type st struct{ S string }
+	l2 := ListOf(l1).Map(func(v string) Option {
+		if v == "a" {
+			return NewOption(st{S: v})
+		}
+		return None
+	}).OptionValue(TypeAsserter(st{})).MustGetResult().([]st)
 	suite.Len(l2, 1)
 	suite.Equal("a", l2[0].S)
 }
