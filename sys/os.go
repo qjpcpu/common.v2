@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-	"time"
 )
 
 // Exec command and replace current process
@@ -49,7 +48,7 @@ func WithWd(w string) CommandOpt {
 }
 
 type Output struct {
-	r           *bytes.Buffer
+	r           io.Reader
 	donec       chan error
 	streamDonce chan struct{}
 	err         error
@@ -88,17 +87,10 @@ func (co *Output) ForEachLine(fn func(string)) *Output {
 	r := io.TeeReader(co.r, buf)
 	defer func() { co.r = buf }()
 
-RESCAN:
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		fn(line)
-	}
-	select {
-	case <-co.streamDonce:
-	default:
-		time.Sleep(time.Millisecond * 10)
-		goto RESCAN
 	}
 
 	return co
@@ -108,11 +100,12 @@ func (co *Output) String() string {
 	if co.r == nil {
 		return ""
 	}
-	<-co.streamDonce
-	buf := &bytes.Buffer{}
-	r := io.TeeReader(co.r, buf)
-	data, _ := ioutil.ReadAll(r)
-	co.r = buf
+	data, _ := ioutil.ReadAll(co.r)
+	if r, ok := co.r.(*bytes.Reader); ok {
+		r.Seek(0, io.SeekStart)
+	} else {
+		co.r = bytes.NewReader(data)
+	}
 	return string(data)
 }
 
@@ -157,11 +150,13 @@ func RunCommand(c string, opts ...CommandOpt) (out *Output) {
 		out.err = err
 		return
 	}
-
-	out.r = new(bytes.Buffer)
+	pr, pw := io.Pipe()
+	out.r = pr
 	go func() {
 		defer close(out.streamDonce)
-		io.Copy(out.r, outReader)
+		defer pw.Close()
+		io.Copy(pw, outReader)
+
 	}()
 	go func() {
 		defer close(out.donec)
