@@ -12,6 +12,7 @@ type OS interface {
 	MkdirAll(dir string) error
 	WriteToFile(string, io.Reader) error
 	Remove(string) error
+	Exist(string) bool
 }
 
 type osImpl struct{}
@@ -30,6 +31,13 @@ func (osImpl) Walk(rootDir string, cb func(string)) {
 		}
 		return nil
 	})
+}
+
+func (osImpl) Exist(f string) bool {
+	if _, err := os.Stat(f); err != nil && os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 func (osImpl) Open(file string) (io.ReadCloser, error) {

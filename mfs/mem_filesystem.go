@@ -13,6 +13,7 @@ type memFileSystem struct {
 	fileSet      SortedFileSet
 	removedFiles map[string]struct{}
 	ios          OS
+	doPersist    PersistFunc
 }
 
 // New fs mount rootDir to /
@@ -35,6 +36,7 @@ func Create(drv FilesystemEventDriver, ios OS, rootDir string, prefix string) Fi
 		drv:          drv,
 		ios:          ios,
 	}
+	ft.doPersist = ft._persitFile
 	if isStrBlank(rootDir) {
 		return ft
 	}
@@ -44,6 +46,10 @@ func Create(drv FilesystemEventDriver, ios OS, rootDir string, prefix string) Fi
 		ft.fileSet.Set(filename, createFile(drv, ios, path, filename))
 	})
 	return ft
+}
+
+func (ft *memFileSystem) AddPersistHook(hook PersistHook) {
+	ft.doPersist = hook(ft.doPersist)
 }
 
 func (ft *memFileSystem) Events() FileEventRegister {
@@ -57,10 +63,7 @@ func (ft *memFileSystem) Persist(rootDir string) error {
 	rootDir = absOfFile(rootDir)
 	ft.fileSet.Foreach("/", func(name string, f File) {
 		fullname := join(rootDir, name)
-		if f.OriginalName() != fullname || f.IsDirty() {
-			ft.mkAll(filepath.Dir(fullname))
-			ft.writeFile(fullname, f)
-		}
+		ft.doPersist(f, fullname)
 	})
 	for _, file := range ft.getMarkRemovedFiles() {
 		fullname := join(rootDir, file)
@@ -147,6 +150,24 @@ func (ft *memFileSystem) Erase(name string) {
 			ft.unmarkFileRemoved(name)
 		}
 	}
+}
+
+func (ft *memFileSystem) DropIfExist(names ...string) {
+	for _, name := range names {
+		ft.dropIfExist(name)
+	}
+}
+
+func (ft *memFileSystem) dropIfExist(name string) {
+	name = prependSlash(name)
+	ft.AddPersistHook(func(next PersistFunc) PersistFunc {
+		return func(f File, absName string) error {
+			if isFileOrSubFile(f.Name(), name) && ft.ios.Exist(absName) {
+				return nil
+			}
+			return next(f, absName)
+		}
+	})
 }
 
 func (ft *memFileSystem) GetFile(name string) File {
@@ -274,4 +295,18 @@ func (ft *memFileSystem) writeFile(filename string, f File) (err error) {
 		err = ft.ios.WriteToFile(filename, r)
 	})
 	return
+}
+
+func (ft *memFileSystem) _persitFile(f File, fullname string) error {
+	if f.OriginalName() != fullname || f.IsDirty() {
+		if dir := filepath.Dir(fullname); !ft.ios.Exist(dir) {
+			if err := ft.mkAll(dir); err != nil {
+				return err
+			}
+		}
+		if err := ft.writeFile(fullname, f); err != nil {
+			return err
+		}
+	}
+	return nil
 }

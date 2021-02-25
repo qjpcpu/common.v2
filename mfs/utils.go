@@ -85,6 +85,16 @@ func isFileInDir(file, dir string) bool {
 	return strings.HasPrefix(file, dir) && file != dir
 }
 
+func isFileOrSubFile(file, fileOrDir string) bool {
+	if file == fmtDirWithoutSlash(fileOrDir) {
+		return true
+	}
+	if isFileInDir(file, fileOrDir) {
+		return true
+	}
+	return false
+}
+
 func isStrBlank(s string) bool { return s == "" }
 
 func getFileNames(fs []File) (out []string) {

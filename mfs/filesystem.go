@@ -11,6 +11,8 @@ type FileSystem interface {
 	ListFile() []File
 	ReadDir(dir string, recursive bool) []File
 	CreateFile(name string) File
+	DropIfExist(...string)
+	AddPersistHook(PersistHook)
 	Remove(string)
 	Erase(string)
 	GetFile(string) File
@@ -40,3 +42,9 @@ type File interface {
 	Map(ContentMapFunc)
 	IsDirty() bool
 }
+
+// PersistFunc called when save file
+type PersistFunc func(f File, fullname string) error
+
+// PersistHook PersistFunc wrapper
+type PersistHook func(PersistFunc) PersistFunc

@@ -207,6 +207,102 @@ func (suite *FSTestSuite) TestCopyFile() {
 	suite.Equal("B", string(fs.GetFile("/a/x").Content()))
 }
 
+func (suite *FSTestSuite) TestDropIfExist() {
+	dir, err := ioutil.TempDir("/tmp", "22rt")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+	afile := filepath.Join(dir1, "a")
+	ioutil.WriteFile(afile, []byte("X"), 0755)
+
+	fs := New(dir)
+	fs.CreateFile("/a").SetContent([]byte("A"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+	fs.DropIfExist("/a")
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(afile)
+	suite.Equal("X", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("B", string(data))
+}
+
+func (suite *FSTestSuite) TestDirDropIfExist() {
+	dir, err := ioutil.TempDir("/tmp", "22rt2")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt1")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+	afile := filepath.Join(dir1, "a")
+	ioutil.WriteFile(afile, []byte("X"), 0755)
+
+	fs := New(dir)
+	fs.CreateFile("/a").SetContent([]byte("A"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+	fs.DropIfExist("/")
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(afile)
+	suite.Equal("X", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("B", string(data))
+}
+
+func (suite *FSTestSuite) TestDirDropIfExistBeforeOp() {
+	dir, err := ioutil.TempDir("/tmp", "22rt2")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt1")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+	afile := filepath.Join(dir1, "a")
+	ioutil.WriteFile(afile, []byte("X"), 0755)
+
+	fs := New(dir)
+	fs.DropIfExist("/")
+	fs.CreateFile("/a").SetContent([]byte("A"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(afile)
+	suite.Equal("X", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("B", string(data))
+}
+func (suite *FSTestSuite) TestDirDropIfExist2() {
+	dir, err := ioutil.TempDir("/tmp", "22rt")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+	afile := filepath.Join(dir1, "f", "a")
+	os.MkdirAll(filepath.Dir(afile), 0755)
+	ioutil.WriteFile(afile, []byte("X"), 0755)
+
+	fs := New(dir)
+	fs.CreateFile("/f/a").SetContent([]byte("A"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+	fs.DropIfExist("/f")
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(afile)
+	suite.Equal("X", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("B", string(data))
+}
+
 func (suite *FSTestSuite) TestCopy() {
 	dir, err := ioutil.TempDir("/tmp", "221rt")
 	suite.Nil(err)
@@ -312,6 +408,11 @@ func (fos *fakeOS) Walk(rootDir string, cb func(string)) {
 	for _, f := range fos.Files {
 		cb(f)
 	}
+}
+
+func (fos *fakeOS) Exist(f string) bool {
+	_, ok := fos.Files[f]
+	return ok
 }
 
 func (fos *fakeOS) Open(file string) (io.ReadCloser, error) {
