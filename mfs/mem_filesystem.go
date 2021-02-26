@@ -14,6 +14,7 @@ type memFileSystem struct {
 	removedFiles map[string]struct{}
 	ios          OS
 	doPersist    PersistFunc
+	fc           *fileExistCache
 }
 
 type createOpt struct {
@@ -86,6 +87,9 @@ func (ft *memFileSystem) Persist(rootDir string) error {
 	if isStrBlank(rootDir) {
 		return fmt.Errorf("empty dst directory %s", rootDir)
 	}
+	// set file exist checker
+	ft.fc = newFileExistCache(ft.ios)
+
 	rootDir = absOfFile(rootDir)
 	ft.fileSet.Foreach("/", func(name string, f File) {
 		fullname := join(rootDir, name)
@@ -189,7 +193,7 @@ func (ft *memFileSystem) dropIfExist(name string) {
 	ft.AddPersistHook(func(next PersistFunc) PersistFunc {
 		return func(f File, absName string) error {
 			targetDir := getDirByFile(absName, f.Name())
-			if isFileOrSubFile(f.Name(), name) && ft.ios.Exist(filepath.Join(targetDir, name)) {
+			if isFileOrSubFile(f.Name(), name) && ft.fc.Exist(filepath.Join(targetDir, name)) {
 				return nil
 			}
 			return next(f, absName)

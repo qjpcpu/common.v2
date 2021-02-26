@@ -280,6 +280,31 @@ func (suite *FSTestSuite) TestDirDropIfExist4() {
 	suite.Equal("B", string(data))
 }
 
+func (suite *FSTestSuite) TestDirDropIfExist5() {
+	dir, err := ioutil.TempDir("/tmp", "22rt2v")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt1x")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+
+	fs := New(dir)
+	fs.CreateFile("/a/aa").SetContent([]byte("A"))
+	fs.CreateFile("/a/bb").SetContent([]byte("M"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+	fs.DropIfExist("/a")
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(filepath.Join(dir1, "a", "aa"))
+	suite.Equal("A", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "a", "bb"))
+	suite.Equal("M", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("B", string(data))
+}
+
 func (suite *FSTestSuite) TestDirDropIfExistBeforeOp() {
 	dir, err := ioutil.TempDir("/tmp", "22rt2")
 	suite.Nil(err)
