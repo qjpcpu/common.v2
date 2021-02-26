@@ -103,3 +103,11 @@ func getFileNames(fs []File) (out []string) {
 	}
 	return
 }
+
+func fileWithoutRootSlash(f string) string {
+	return strings.TrimPrefix(f, "/")
+}
+
+func getDirByFile(fullname, relativename string) string {
+	return strings.TrimSuffix(fullname, fileWithoutRootSlash(relativename))
+}

@@ -252,6 +252,31 @@ func (suite *FSTestSuite) TestDirDropIfExist() {
 	data, _ := ioutil.ReadFile(afile)
 	suite.Equal("X", string(data))
 	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
+	suite.Equal("", string(data))
+}
+
+func (suite *FSTestSuite) TestDirDropIfExist4() {
+	dir, err := ioutil.TempDir("/tmp", "22rt2")
+	suite.Nil(err)
+	defer os.RemoveAll(dir)
+
+	dir1, err := ioutil.TempDir("/tmp", "23rt1")
+	suite.Nil(err)
+	defer os.RemoveAll(dir1)
+	os.MkdirAll(filepath.Join(dir1, "a"), 0755)
+	afile := filepath.Join(dir1, "a", "aa")
+	ioutil.WriteFile(afile, []byte("X"), 0755)
+
+	fs := New(dir)
+	fs.CreateFile("/a/aa").SetContent([]byte("A"))
+	fs.CreateFile("/b").SetContent([]byte("B"))
+	fs.DropIfExist("/a")
+
+	fs.Persist(dir1)
+
+	data, _ := ioutil.ReadFile(afile)
+	suite.Equal("X", string(data))
+	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
 	suite.Equal("B", string(data))
 }
 
@@ -276,8 +301,9 @@ func (suite *FSTestSuite) TestDirDropIfExistBeforeOp() {
 	data, _ := ioutil.ReadFile(afile)
 	suite.Equal("X", string(data))
 	data, _ = ioutil.ReadFile(filepath.Join(dir1, "b"))
-	suite.Equal("B", string(data))
+	suite.Equal("", string(data))
 }
+
 func (suite *FSTestSuite) TestDirDropIfExist2() {
 	dir, err := ioutil.TempDir("/tmp", "22rt")
 	suite.Nil(err)

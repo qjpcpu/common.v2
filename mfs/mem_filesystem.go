@@ -188,7 +188,8 @@ func (ft *memFileSystem) dropIfExist(name string) {
 	name = prependSlash(name)
 	ft.AddPersistHook(func(next PersistFunc) PersistFunc {
 		return func(f File, absName string) error {
-			if isFileOrSubFile(f.Name(), name) && ft.ios.Exist(absName) {
+			targetDir := getDirByFile(absName, f.Name())
+			if isFileOrSubFile(f.Name(), name) && ft.ios.Exist(filepath.Join(targetDir, name)) {
 				return nil
 			}
 			return next(f, absName)
