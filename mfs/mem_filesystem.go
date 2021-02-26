@@ -16,18 +16,44 @@ type memFileSystem struct {
 	doPersist    PersistFunc
 }
 
-// New fs mount rootDir to /
-func New(rootDir string) FileSystem {
-	return NewWithPrefix(rootDir, "")
+type createOpt struct {
+	Prefix          string
+	IncludingHidden bool
 }
 
-// NewWithPrefix fs mount rootDir with prefix
-func NewWithPrefix(rootDir, prefix string) FileSystem {
-	return Create(NewFSEventDriver(), newOs(), rootDir, prefix)
+// CreateOption of fs
+type CreateOption func(*createOpt)
+
+// WithPrefix for fs root
+func WithPrefix(s string) CreateOption {
+	return func(o *createOpt) {
+		o.Prefix = s
+	}
+}
+
+// WithHidden with hidden file/dir
+func WithHidden() CreateOption {
+	return func(o *createOpt) {
+		o.IncludingHidden = true
+	}
+}
+
+// New fs mount rootDir to /
+func New(rootDir string) FileSystem {
+	return NewWithOptions(rootDir)
+}
+
+// NewWithOptions fs mount rootDir with prefix
+func NewWithOptions(rootDir string, opts ...CreateOption) FileSystem {
+	return Create(NewFSEventDriver(), newOs(), rootDir, opts...)
 }
 
 // Create mem fs
-func Create(drv FilesystemEventDriver, ios OS, rootDir string, prefix string) FileSystem {
+func Create(drv FilesystemEventDriver, ios OS, rootDir string, opts ...CreateOption) FileSystem {
+	o := new(createOpt)
+	for _, fn := range opts {
+		fn(o)
+	}
 	rootDir = absOfFile(rootDir)
 	ft := &memFileSystem{
 		origRootDir:  rootDir,
@@ -40,9 +66,9 @@ func Create(drv FilesystemEventDriver, ios OS, rootDir string, prefix string) Fi
 	if isStrBlank(rootDir) {
 		return ft
 	}
-	ios.Walk(rootDir, func(path string) {
+	ios.Walk(rootDir, o.IncludingHidden, func(path string) {
 		path = absOfFile(path)
-		filename := join(prefix, trimPrefix(path, ft.origRootDir))
+		filename := join(o.Prefix, trimPrefix(path, ft.origRootDir))
 		ft.fileSet.Set(filename, createFile(drv, ios, path, filename))
 	})
 	return ft

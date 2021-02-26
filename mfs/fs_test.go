@@ -42,7 +42,7 @@ func (suite *FSTestSuite) TestEventOnUnEvent() {
 
 func (suite *FSTestSuite) TestFileRename() {
 	drv := NewFSEventDriver()
-	fs := Create(drv, newOs(), "", "")
+	fs := Create(drv, newOs(), "")
 	var delFile, renameFrom, renameTo string
 	fn := func(e FileRenamedEvent) {
 		suite.T().Logf("FileRenamedEvent %s->%s", e.Old, e.New)
@@ -157,7 +157,7 @@ func (suite *FSTestSuite) TestWithPrefix() {
 	suite.Nil(err)
 	defer os.RemoveAll(dir)
 	ioutil.WriteFile(join(dir, "aaa"), []byte("000"), 0755)
-	fs := NewWithPrefix(dir, "/chroot")
+	fs := NewWithOptions(dir, WithPrefix("/chroot"))
 	suite.Len(fs.ListFile(), 1)
 	suite.Equal("000", string(fs.GetFile("/chroot/aaa").Content()))
 }
@@ -322,7 +322,7 @@ func (suite *FSTestSuite) TestCopy() {
 func (suite *FSTestSuite) TestFS() {
 	fakeFiles := map[string]string{}
 	fos := newFakeOSWithContent(fakeFiles)
-	fs := Create(NewFSEventDriver(), fos, "", "")
+	fs := Create(NewFSEventDriver(), fos, "")
 	f1 := fs.CreateFile("/e/bbb")
 	f1.SetContent([]byte("BBB"))
 
@@ -352,7 +352,7 @@ func (suite *FSTestSuite) TestFS() {
 	fos = newFakeOSWithContent(map[string]string{
 		"/t/1": "EEE",
 	})
-	fs = Create(NewFSEventDriver(), fos, "", "")
+	fs = Create(NewFSEventDriver(), fos, "")
 	// create f1
 	f1 = fs.CreateFile("/a/b/c/e/1")
 	f1.Map(func(r io.Reader, w io.Writer) {
@@ -380,7 +380,7 @@ func (suite *FSTestSuite) TestFS() {
 }
 
 func (suite *FSTestSuite) TestReadDir() {
-	fs := Create(NewFSEventDriver(), newFakeOS(), "", "")
+	fs := Create(NewFSEventDriver(), newFakeOS(), "")
 	fs.CreateFile("/a/b/c/e/1")
 	fs.CreateFile("/a/b/ggg/1")
 	fs.CreateFile("/t/1")
@@ -404,7 +404,7 @@ func newFakeOSWithContent(f map[string]string) *fakeOS {
 	return &fakeOS{Files: f}
 }
 
-func (fos *fakeOS) Walk(rootDir string, cb func(string)) {
+func (fos *fakeOS) Walk(rootDir string, includeHidden bool, cb func(string)) {
 	for _, f := range fos.Files {
 		cb(f)
 	}
