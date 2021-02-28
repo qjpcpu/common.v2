@@ -3,6 +3,7 @@ package fp
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -611,4 +612,13 @@ func (suite *ListComprehensionTestSuite) TestOptionCustomPtrType() {
 	}).OptionValue(func(*st) {}).MustGetResult().([]*st)
 	suite.Len(l2, 1)
 	suite.Equal("a", l2[0].S)
+}
+
+func (suite *ListComprehensionTestSuite) TestCaseMap() {
+	l1 := []string{"a", "b", "c", "b"}
+	l2 := ListOf(l1).CaseMap(Equal("a"), strings.ToUpper).Strings()
+	suite.ElementsMatch([]string{"A", "b", "c", "b"}, l2)
+
+	l2 = ListOf(l1).CaseMap(Equal("b"), strings.ToUpper).Strings()
+	suite.ElementsMatch([]string{"a", "B", "c", "B"}, l2)
 }

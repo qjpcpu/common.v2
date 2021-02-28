@@ -51,6 +51,36 @@ func (l *_List) Map(fn interface{}) *_List {
 	return l
 }
 
+// CaseMap map matched element, input/output of mapFn must have same type
+func (l *_List) CaseMap(matchFn interface{}, mapFn interface{}) *_List {
+	if err := l.parseFilterFunction(matchFn); err != nil {
+		panic(err)
+	}
+	outElemType, hasIndex, err := l.parseMapFunction(mapFn)
+	if err != nil {
+		panic(err)
+	}
+	if outElemType != l.elemType {
+		panic("map fn of CaseMap should have same input/output")
+	}
+	if hasIndex {
+		panic("map fn ofCaseMap shouldn't have index")
+	}
+
+	matchFnVal := reflect.ValueOf(matchFn)
+	mapFnVal := reflect.ValueOf(mapFn)
+
+	mapFnTyp := reflect.FuncOf([]reflect.Type{l.elemType}, []reflect.Type{l.elemType}, false)
+	newMapFn := reflect.MakeFunc(mapFnTyp, func(in []reflect.Value) []reflect.Value {
+		if matchFnVal.Call(in)[0].Bool() {
+			return mapFnVal.Call(in)
+		}
+		return in
+	})
+
+	return l.Map(newMapFn.Interface())
+}
+
 // FlatMap map and flatten
 func (l *_List) FlatMap(fn interface{}) *_List {
 	return l.Map(fn).Flatten()
