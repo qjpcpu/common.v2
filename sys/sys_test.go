@@ -1,8 +1,11 @@
 package sys
 
 import (
-	"github.com/stretchr/testify/suite"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type MoveFilesTestSuite struct {
@@ -68,4 +71,16 @@ func (suite *MoveFilesTestSuite) TestMoveFilesOmit() {
 	suite.Equal(2, len(existDir))
 	suite.Equal(1, existDir["/to/c"])
 	suite.Equal(1, existDir["/to/a/b"])
+}
+
+func (suite *MoveFilesTestSuite) TestAbs() {
+	home, _ := os.UserHomeDir()
+	os.Setenv("t1", "/T1")
+	os.Setenv("t2", "T2")
+	suite.Equal("/T1/sp/T2", Abs("$t1/sp/$t2"))
+
+	suite.Equal(filepath.Join(home, "local", "T2"), Abs("~/local/$t2"))
+
+	suite.Equal("/T1", Abs("$t1"))
+	suite.Equal("/T1/a/b", Abs("$t1/a/b/c/./.."))
 }

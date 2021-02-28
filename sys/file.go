@@ -119,6 +119,28 @@ func _MoveFiles(fromDir, toDir string,
 	return nil
 }
 
+func Abs(file string) string {
+	if strings.HasPrefix(file, `~`) {
+		home, _ := os.UserHomeDir()
+		file = strings.Replace(file, `~`, home, 1)
+	}
+	if strings.Contains(file, `$`) {
+		tokens := fp.ListOf(strings.Split(file, "/")).Map(func(s string) string {
+			if strings.HasPrefix(s, "$") {
+				s = os.Getenv(strings.TrimPrefix(s, "$"))
+			}
+			return s
+		}).Strings()
+		file = strings.Join(tokens, "/")
+	}
+	file, _ = filepath.Abs(file)
+	return file
+}
+
+func Mkdir(dir string) {
+	os.MkdirAll(dir, 0755)
+}
+
 func absOfDir(dir string) string {
 	dir, _ = filepath.Abs(dir)
 	if !strings.HasSuffix(dir, `/`) {
