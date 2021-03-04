@@ -277,6 +277,11 @@ func (l *_List) Sub(l2 *_List) *_List {
 	return l.Reject(fn.Interface())
 }
 
+// Contains element
+func (l *_List) Contains(v interface{}) bool {
+	return l.AsSet().Contains(v)
+}
+
 // Intersect
 func (l *_List) Intersect(l2 *_List) *_List {
 	ft := reflect.FuncOf([]reflect.Type{l.elemType, l.elemType}, []reflect.Type{boolType}, false)
@@ -397,9 +402,25 @@ func (l *_List) First() *ResultValue {
 	return l.Pick(0)
 }
 
+// FirstOrZero element
+func (l *_List) FirstOrZero() *ResultValue {
+	if l.Size() > 0 {
+		return l.First()
+	}
+	return createResult(reflect.Zero(l.elemType), nil)
+}
+
 // Last element
 func (l *_List) Last() *ResultValue {
 	return l.Pick(l.valList.Len() - 1)
+}
+
+// LastOrZero
+func (l *_List) LastOrZero() *ResultValue {
+	if l.Size() > 0 {
+		return l.Last()
+	}
+	return createResult(reflect.Zero(l.elemType), nil)
 }
 
 // OptionValue map Option list to its values, the list must be Option list
