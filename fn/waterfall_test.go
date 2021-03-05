@@ -216,3 +216,40 @@ func TestIfThen3(t *testing.T) {
 		t.Fatal("bad waterfall,a=", a)
 	}
 }
+
+func TestIfThen4(t *testing.T) {
+	var a int
+	err := Do(func() int {
+		return 1
+	}).IfThen(true, func(i int) int {
+		return i + 1
+	}).IfThen(true, func(i int) int {
+		a = i + 1
+		return i + 1
+	}).Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a != 3 {
+		t.Fatal("bad waterfall,a=", a)
+	}
+}
+
+func TestIfThen5(t *testing.T) {
+	var a int
+	err := Do(func() int {
+		return 1
+	}).Case(true, func(i int) int {
+		a = i + 1
+		return i + 1
+	}).Case(true, func(i int) int {
+		a = i + 1
+		return i + 1
+	}).Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a != 2 {
+		t.Fatal("bad waterfall,a=", a)
+	}
+}
