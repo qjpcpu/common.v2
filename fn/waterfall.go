@@ -41,8 +41,14 @@ func Do(f Function) FunctionRunner {
 	return makeRunner().addFunc(f)
 }
 
+// DoIf and stop
 func DoIf(c bool, f Function) FunctionRunner {
 	return makeRunner().IfThen(c, f)
+}
+
+// DoCase and stop
+func DoCase(c bool, f Function) FunctionRunner {
+	return makeRunner().Case(c, f)
 }
 
 func DoIfBy(c ConditionFuntion, f Function) FunctionRunner {
