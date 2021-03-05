@@ -29,6 +29,8 @@ type FunctionRunner interface {
 	// IfThenBy condition, the then function should have same input/output
 	IfThenBy(ConditionFuntion, Function) FunctionRunner
 	IfThen(bool, Function) FunctionRunner
+	CaseBy(ConditionFuntion, Function) FunctionRunner
+	Case(bool, Function) FunctionRunner
 	OnErr(ErrorFunction) FunctionRunner
 	Always(AlwaysFunction) FunctionRunner
 	Run(...interface{}) error
@@ -62,6 +64,34 @@ func (r *funcRunner) Then(f Function) FunctionRunner {
 	return r.addFunc(f)
 }
 
+func (r *funcRunner) Case(c bool, f Function) FunctionRunner {
+	return r.CaseBy(func() bool { return c }, f)
+}
+
+func (r *funcRunner) CaseBy(cf ConditionFuntion, f Function) FunctionRunner {
+	typ := reflect.TypeOf(f)
+	mustBeConditionThenFunction(typ)
+	hasAbortFn := hasAbortFnInput(typ)
+	if !hasAbortFn {
+		typ = appendAbortFn(typ)
+	}
+
+	fn := reflect.MakeFunc(typ, func(in []reflect.Value) (out []reflect.Value) {
+		if cf() {
+			if hasAbortFn {
+				out = reflect.ValueOf(f).Call(in)
+			} else {
+				out = reflect.ValueOf(f).Call(in[:len(in)-1])
+			}
+			// abort fn
+			in[len(in)-1].Call(nil)
+			return out
+		}
+		return in[:len(in)-1]
+	})
+	return r.addFunc(fn.Interface())
+}
+
 func (r *funcRunner) IfThen(c bool, f Function) FunctionRunner {
 	return r.IfThenBy(func() bool { return c }, f)
 }
@@ -81,8 +111,6 @@ func (r *funcRunner) IfThenBy(cf ConditionFuntion, f Function) FunctionRunner {
 			} else {
 				out = reflect.ValueOf(f).Call(in[:len(in)-1])
 			}
-			// abort fn
-			in[len(in)-1].Call(nil)
 			return out
 		}
 		return in[:len(in)-1]

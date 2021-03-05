@@ -152,7 +152,7 @@ func TestIfThen(t *testing.T) {
 	var sum, a int
 	err := Do(func() int {
 		return 1
-	}).IfThen(false, func(i int) int {
+	}).Case(false, func(i int) int {
 		return i + 1
 	}).Then(func(i int) int {
 		sum = i + 1
@@ -175,7 +175,7 @@ func TestIfThen2(t *testing.T) {
 	var sum, a int
 	err := Do(func() int {
 		return 1
-	}).IfThen(true, func(i int) int {
+	}).Case(true, func(i int) int {
 		return i + 1
 	}).Then(func(i int) int {
 		sum = i + 1
@@ -187,6 +187,29 @@ func TestIfThen2(t *testing.T) {
 		t.Fatal(err)
 	}
 	if sum != 0 {
+		t.Fatal("bad waterfall,sum=", sum)
+	}
+	if a != 100 {
+		t.Fatal("bad waterfall,a=", a)
+	}
+}
+
+func TestIfThen3(t *testing.T) {
+	var sum, a int
+	err := Do(func() int {
+		return 1
+	}).IfThen(true, func(i int) int {
+		return i + 1
+	}).Then(func(i int) int {
+		sum = i + 1
+		return 0
+	}).Always(func() {
+		a = 100
+	}).Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum != 3 {
 		t.Fatal("bad waterfall,sum=", sum)
 	}
 	if a != 100 {
