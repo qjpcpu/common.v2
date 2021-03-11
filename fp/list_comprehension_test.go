@@ -622,3 +622,9 @@ func (suite *ListComprehensionTestSuite) TestCaseMap() {
 	l2 = ListOf(l1).CaseMap(Equal("b"), strings.ToUpper).Strings()
 	suite.ElementsMatch([]string{"a", "B", "c", "B"}, l2)
 }
+
+func (suite *ListComprehensionTestSuite) TestFirstOrZero() {
+	l1 := []*string{}
+	ret := ListOf(l1).FirstOrZero().MustGetResult().(*string)
+	suite.Nil(ret)
+}
