@@ -28,7 +28,7 @@ type CreateOption func(*createOpt)
 // WithPrefix for fs root
 func WithPrefix(s string) CreateOption {
 	return func(o *createOpt) {
-		o.Prefix = s
+		o.Prefix = prependSlash(s)
 	}
 }
 
