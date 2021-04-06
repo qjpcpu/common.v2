@@ -54,7 +54,7 @@ func Select(label string, choices []string, opt ...SelectFn) (int, string) {
 }
 
 // SelectWithSearch from menu
-func SelectWithSearch(label string, choices []string) int {
+func SelectWithSearch(label string, choices []string, opt ...SelectFn) int {
 	newChoices, hit := reOrderChoicesByFreq(label, choices)
 	searchFunction := func(s *SelectWidget) {
 		s.Size = 20
@@ -62,6 +62,9 @@ func SelectWithSearch(label string, choices []string) int {
 		s.Searcher = func(input string, index int) bool {
 			_, idx := py.FuzzyContain(newChoices[index], input)
 			return idx >= 0
+		}
+		for _, fn := range opt {
+			fn(s)
 		}
 	}
 	idx, _ := FixedSelect(label, newChoices, searchFunction)
