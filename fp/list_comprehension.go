@@ -382,7 +382,7 @@ func (l *_List) Take(n int) *_List {
 	if n < 0 {
 		n = 0
 	}
-	l.valList = l.valList.Slice(0, n)
+	l.valList = l.valList.Slice(0, min(n, l.valList.Len()))
 	return l
 }
 
