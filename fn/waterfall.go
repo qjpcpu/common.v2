@@ -13,7 +13,9 @@ import (
 type abortFunction func()
 
 // Function would be invoked in waterfall one by one
-type Function interface{} // first parameter should be Context
+// if the last output is error, function runner would halt right now
+type Function interface{}
+
 // AlwaysFunction would be invoked at last
 type AlwaysFunction func()
 
@@ -25,14 +27,21 @@ type ConditionFuntion func() bool
 
 // FunctionRunner execute functions one by one
 type FunctionRunner interface {
+	// Then execute next function
 	Then(Function) FunctionRunner
-	// IfThenBy condition, the then function should have same input/output
+	// IfThenBy condition, the then function would be skipped if condition test fail
 	IfThenBy(ConditionFuntion, Function) FunctionRunner
+	// IfThen condition, the then function would be skipped if condition test fail
 	IfThen(bool, Function) FunctionRunner
+	// CaseBy condition hitted, runner would stop
 	CaseBy(ConditionFuntion, Function) FunctionRunner
+	// Case condition hitted, runner would stop
 	Case(bool, Function) FunctionRunner
+	// OnErr function
 	OnErr(ErrorFunction) FunctionRunner
+	// Always execute
 	Always(AlwaysFunction) FunctionRunner
+	// Run functions one by one
 	Run(...interface{}) error
 }
 
