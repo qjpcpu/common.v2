@@ -3,6 +3,7 @@ package sys
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -164,4 +165,29 @@ func RunCommand(c string, opts ...CommandOpt) (out *Output) {
 	}()
 
 	return
+}
+
+// RunCommand
+func RunCommandV2(c string, opts ...CommandOpt) (string, error) {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
+	}
+	binary, lookErr := exec.LookPath(shell)
+	if lookErr != nil {
+		return "", lookErr
+	}
+	o := &cmdopt{}
+	for _, fn := range opts {
+		fn(o)
+	}
+
+	cmd := exec.Command(binary, "-c", c)
+	cmd.Dir = o.Dir
+	cmd.Env = append(os.Environ(), o.Env...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%v %s", err, string(out))
+	}
+	return string(out), nil
 }
