@@ -17,29 +17,29 @@ import (
 )
 
 // NewClient new client
-func NewClient() *Client {
-	cli := &Client{
+func NewClient() Client {
+	cli := &clientImpl{
 		Client: &syshttp.Client{Transport: DefaultPooledTransport()},
 	}
 	cli.SetTimeout(5 * time.Second)
 	return cli
 }
 
-// Client client
-type Client struct {
+// clientImpl client
+type clientImpl struct {
 	Client      *syshttp.Client
 	middlewares []Middleware
 }
 
 // EnableCookie use cookie
-func (client *Client) EnableCookie() *Client {
+func (client *clientImpl) EnableCookie() Client {
 	jar, _ := cookiejar.New(nil)
 	client.Client.Jar = jar
 	return client
 }
 
 // SetTimeout timeout
-func (client *Client) SetTimeout(tm time.Duration) *Client {
+func (client *clientImpl) SetTimeout(tm time.Duration) Client {
 	client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			getValue(req).Timeout = tm
@@ -49,7 +49,7 @@ func (client *Client) SetTimeout(tm time.Duration) *Client {
 	return client
 }
 
-func (client *Client) SetMock(fn Endpoint) *Client {
+func (client *clientImpl) SetMock(fn Endpoint) Client {
 	client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			getValue(req).Mock = fn
@@ -59,7 +59,7 @@ func (client *Client) SetMock(fn Endpoint) *Client {
 	return client
 }
 
-func (client *Client) SetDebug(w HTTPLogger) *Client {
+func (client *clientImpl) SetDebug(w HTTPLogger) Client {
 	client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			getValue(req).Debugger = w
@@ -69,7 +69,7 @@ func (client *Client) SetDebug(w HTTPLogger) *Client {
 	return client
 }
 
-func (client *Client) SetRetry(opt RetryOption) *Client {
+func (client *clientImpl) SetRetry(opt RetryOption) Client {
 	client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			getValue(req).RetryOption = &opt
@@ -79,11 +79,11 @@ func (client *Client) SetRetry(opt RetryOption) *Client {
 	return client
 }
 
-func (client *Client) SetHeader(name, val string) *Client {
+func (client *clientImpl) SetHeader(name, val string) Client {
 	return client.SetHeaders(map[string]string{name: val})
 }
 
-func (client *Client) SetHeaders(hder map[string]string) *Client {
+func (client *clientImpl) SetHeaders(hder map[string]string) Client {
 	return client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			setRequestHeader(req, hder)
@@ -92,12 +92,12 @@ func (client *Client) SetHeaders(hder map[string]string) *Client {
 	})
 }
 
-func (client *Client) AddMiddleware(m ...Middleware) *Client {
+func (client *clientImpl) AddMiddleware(m ...Middleware) Client {
 	client.middlewares = append(client.middlewares, m...)
 	return client
 }
 
-func (client *Client) AddBeforeHook(hook func(*syshttp.Request)) *Client {
+func (client *clientImpl) AddBeforeHook(hook func(*syshttp.Request)) Client {
 	return client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			hook(req)
@@ -106,7 +106,7 @@ func (client *Client) AddBeforeHook(hook func(*syshttp.Request)) *Client {
 	})
 }
 
-func (client *Client) AddAfterHook(hook func(*syshttp.Response)) *Client {
+func (client *clientImpl) AddAfterHook(hook func(*syshttp.Response)) Client {
 	return client.AddMiddleware(func(next Endpoint) Endpoint {
 		return func(req *syshttp.Request) (*syshttp.Response, error) {
 			res, err := next(req)
@@ -118,16 +118,16 @@ func (client *Client) AddAfterHook(hook func(*syshttp.Response)) *Client {
 	})
 }
 
-func (client *Client) MakeDoer(opts ...Option) Doer {
+func (client *clientImpl) MakeDoer(opts ...Option) Doer {
 	return (Doer)(client.makeFinalHandler(client.getOptionMiddlewares(opts...)...))
 }
 
-func (client *Client) DoRequest(req *syshttp.Request, opts ...Option) *Response {
+func (client *clientImpl) DoRequest(req *syshttp.Request, opts ...Option) *Response {
 	res, err := client.makeFinalHandler(client.getOptionMiddlewares(opts...)...)(req)
 	return buildResponse(res, err)
 }
 
-func (client *Client) Do(ctx context.Context, method string, uri string, body io.Reader, opts ...Option) *Response {
+func (client *clientImpl) Do(ctx context.Context, method string, uri string, body io.Reader, opts ...Option) *Response {
 	req, err := syshttp.NewRequest(method, uri, body)
 	if err != nil {
 		return buildResponse(nil, err)
@@ -139,27 +139,27 @@ func (client *Client) Do(ctx context.Context, method string, uri string, body io
 	return buildResponse(res, err)
 }
 
-func (client *Client) Download(ctx context.Context, uri string, w io.Writer, opts ...Option) error {
+func (client *clientImpl) Download(ctx context.Context, uri string, w io.Writer, opts ...Option) error {
 	opts = append(opts, WithBody(w))
 	return client.Do(ctx, "GET", uri, nil, opts...).Err
 }
 
 // Get get url
-func (client *Client) Get(ctx context.Context, uri string, opts ...Option) *Response {
+func (client *clientImpl) Get(ctx context.Context, uri string, opts ...Option) *Response {
 	return client.Do(ctx, "GET", uri, nil, opts...)
 }
 
 // Post data
-func (client *Client) Post(ctx context.Context, urlstr string, data []byte, opts ...Option) *Response {
+func (client *clientImpl) Post(ctx context.Context, urlstr string, data []byte, opts ...Option) *Response {
 	return client.Do(ctx, "POST", urlstr, bytes.NewBuffer(data), opts...)
 }
 
-func (client *Client) Put(ctx context.Context, urlstr string, data []byte, opts ...Option) *Response {
+func (client *clientImpl) Put(ctx context.Context, urlstr string, data []byte, opts ...Option) *Response {
 	return client.Do(ctx, "PUT", urlstr, bytes.NewBuffer(data), opts...)
 }
 
 // PostForm post form
-func (client *Client) PostForm(ctx context.Context, urlstr string, data map[string]interface{}, opts ...Option) *Response {
+func (client *clientImpl) PostForm(ctx context.Context, urlstr string, data map[string]interface{}, opts ...Option) *Response {
 	values := url.Values{}
 	for k, v := range data {
 		values.Set(k, fmt.Sprint(v))
@@ -169,7 +169,7 @@ func (client *Client) PostForm(ctx context.Context, urlstr string, data map[stri
 }
 
 // PostJSON post json
-func (c *Client) PostJSON(ctx context.Context, urlstr string, data interface{}, opts ...Option) *Response {
+func (c *clientImpl) PostJSON(ctx context.Context, urlstr string, data interface{}, opts ...Option) *Response {
 	var payload []byte
 	var err error
 	switch d := data.(type) {
@@ -194,7 +194,7 @@ func (c *Client) PostJSON(ctx context.Context, urlstr string, data interface{}, 
 	return c.Post(ctx, urlstr, payload, opts...)
 }
 
-func (client *Client) makeFinalHandler(extraMiddlewares ...Middleware) Endpoint {
+func (client *clientImpl) makeFinalHandler(extraMiddlewares ...Middleware) Endpoint {
 	next := client.Client.Do
 
 	next = middlewareContext(next)
@@ -211,7 +211,7 @@ func (client *Client) makeFinalHandler(extraMiddlewares ...Middleware) Endpoint 
 	return next
 }
 
-func (client *Client) getOptionMiddlewares(opts ...Option) []Middleware {
+func (client *clientImpl) getOptionMiddlewares(opts ...Option) []Middleware {
 	opt := newOptions()
 	for _, fn := range opts {
 		fn(opt)
