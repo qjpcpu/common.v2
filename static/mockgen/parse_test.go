@@ -4,10 +4,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -118,148 +114,33 @@ func Benchmark_parseFile(b *testing.B) {
 	}
 }
 
-func TestParsePackageImport(t *testing.T) {
-	testRoot, err := ioutil.TempDir("", "test_root")
+func TestParseArrayWithConstLength(t *testing.T) {
+	fs := token.NewFileSet()
+	srcDir := "internal/tests/const_array_length/input.go"
+
+	file, err := parser.ParseFile(fs, srcDir, nil, 0)
 	if err != nil {
-		t.Fatal("cannot create tempdir")
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer func() {
-		if err = os.RemoveAll(testRoot); err != nil {
-			t.Errorf("cannot clean up tempdir at %s: %v", testRoot, err)
+
+	p := fileParser{
+		fileSet:            fs,
+		imports:            make(map[string]importedPackage),
+		importedInterfaces: make(map[string]map[string]*ast.InterfaceType),
+		auxInterfaces:      make(map[string]map[string]*ast.InterfaceType),
+		srcDir:             srcDir,
+	}
+
+	pkg, err := p.parseFile("", file)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expects := []string{"[2]int", "[2]int", "[127]int"}
+	for i, e := range expects {
+		got := pkg.Interfaces[0].Methods[i].Out[0].Type.String(nil, "")
+		if got != e {
+			t.Fatalf("got %v; expected %v", got, e)
 		}
-	}()
-	barDir := filepath.Join(testRoot, "gomod/bar")
-	if err = os.MkdirAll(barDir, 0755); err != nil {
-		t.Fatalf("error creating %s: %v", barDir, err)
-	}
-	if err = ioutil.WriteFile(filepath.Join(barDir, "bar.go"), []byte("package bar"), 0644); err != nil {
-		t.Fatalf("error creating gomod/bar/bar.go: %v", err)
-	}
-	if err = ioutil.WriteFile(filepath.Join(testRoot, "gomod/go.mod"), []byte("module github.com/golang/foo"), 0644); err != nil {
-		t.Fatalf("error creating gomod/go.mod: %v", err)
-	}
-	goPath := filepath.Join(testRoot, "gopath")
-	for _, testCase := range []struct {
-		name    string
-		envs    map[string]string
-		dir     string
-		pkgPath string
-		err     error
-	}{
-		{
-			name:    "go mod default",
-			envs:    map[string]string{"GO111MODULE": ""},
-			dir:     barDir,
-			pkgPath: "github.com/golang/foo/bar",
-		},
-		{
-			name:    "go mod off",
-			envs:    map[string]string{"GO111MODULE": "off", "GOPATH": goPath},
-			dir:     filepath.Join(testRoot, "gopath/src/example.com/foo"),
-			pkgPath: "example.com/foo",
-		},
-		{
-			name: "outside GOPATH",
-			envs: map[string]string{"GO111MODULE": "off", "GOPATH": goPath},
-			dir:  "testdata",
-			err:  errOutsideGoPath,
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			for key, value := range testCase.envs {
-				if err := os.Setenv(key, value); err != nil {
-					t.Fatalf("unable to set environment variable %q to %q: %v", key, value, err)
-				}
-			}
-			pkgPath, err := parsePackageImport(filepath.Clean(testCase.dir))
-			if err != testCase.err {
-				t.Errorf("expect %v, got %v", testCase.err, err)
-			}
-			if pkgPath != testCase.pkgPath {
-				t.Errorf("expect %s, got %s", testCase.pkgPath, pkgPath)
-			}
-		})
-	}
-}
-
-func TestParsePackageImport_FallbackGoPath(t *testing.T) {
-	goPath, err := ioutil.TempDir("", "gopath")
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {
-		if err = os.RemoveAll(goPath); err != nil {
-			t.Error(err)
-		}
-	}()
-	srcDir := filepath.Join(goPath, "src/example.com/foo")
-	err = os.MkdirAll(srcDir, 0755)
-	if err != nil {
-		t.Error(err)
-	}
-	key := "GOPATH"
-	value := goPath
-	if err := os.Setenv(key, value); err != nil {
-		t.Fatalf("unable to set environment variable %q to %q: %v", key, value, err)
-	}
-	key = "GO111MODULE"
-	value = "on"
-	if err := os.Setenv(key, value); err != nil {
-		t.Fatalf("unable to set environment variable %q to %q: %v", key, value, err)
-	}
-	pkgPath, err := parsePackageImport(srcDir)
-	expected := "example.com/foo"
-	if pkgPath != expected {
-		t.Errorf("expect %s, got %s", expected, pkgPath)
-	}
-}
-
-func TestParsePackageImport_FallbackMultiGoPath(t *testing.T) {
-	var goPathList []string
-
-	// first gopath
-	goPath, err := ioutil.TempDir("", "gopath1")
-	if err != nil {
-		t.Error(err)
-	}
-	goPathList = append(goPathList, goPath)
-	defer func() {
-		if err = os.RemoveAll(goPath); err != nil {
-			t.Error(err)
-		}
-	}()
-	srcDir := filepath.Join(goPath, "src/example.com/foo")
-	err = os.MkdirAll(srcDir, 0755)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// second gopath
-	goPath, err = ioutil.TempDir("", "gopath2")
-	if err != nil {
-		t.Error(err)
-	}
-	goPathList = append(goPathList, goPath)
-	defer func() {
-		if err = os.RemoveAll(goPath); err != nil {
-			t.Error(err)
-		}
-	}()
-
-	goPaths := strings.Join(goPathList, string(os.PathListSeparator))
-	key := "GOPATH"
-	value := goPaths
-	if err := os.Setenv(key, value); err != nil {
-		t.Fatalf("unable to set environment variable %q to %q: %v", key, value, err)
-	}
-	key = "GO111MODULE"
-	value = "on"
-	if err := os.Setenv(key, value); err != nil {
-		t.Fatalf("unable to set environment variable %q to %q: %v", key, value, err)
-	}
-	pkgPath, err := parsePackageImport(srcDir)
-	expected := "example.com/foo"
-	if pkgPath != expected {
-		t.Errorf("expect %s, got %s", expected, pkgPath)
 	}
 }

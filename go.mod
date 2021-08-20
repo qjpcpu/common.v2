@@ -20,5 +20,7 @@ require (
 	github.com/qjpcpu/qjson v0.0.0-20200630164055-26baf398e39a
 	github.com/stretchr/testify v1.4.0
 	github.com/xujiajun/nutsdb v0.5.0
+	golang.org/x/mod v0.5.0
 	golang.org/x/text v0.3.3
+	golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e
 )
