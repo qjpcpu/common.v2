@@ -1,15 +1,18 @@
 package cli
 
 import (
+	"io"
+	"os"
+
 	gotable "github.com/jedib0t/go-pretty/table"
 	"github.com/jedib0t/go-pretty/text"
-	"os"
 )
 
 type Table interface {
 	SetHeader(v ...interface{}) Table
 	AddRow(v ...interface{}) Table
 	SetStyle(Style) Table
+	SetOutput(w io.Writer)
 	Render()
 }
 
@@ -33,6 +36,10 @@ func NewTable() Table {
 func (t *table) SetStyle(style Style) Table {
 	t.tw.SetStyle(style)
 	return t
+}
+
+func (t *table) SetOutput(w io.Writer) {
+	t.tw.SetOutputMirror(w)
 }
 
 func (t *table) SetHeader(v ...interface{}) Table {

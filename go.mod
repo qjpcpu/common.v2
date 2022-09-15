@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/gizak/termui v2.3.0+incompatible
 	github.com/go-openapi/strfmt v0.19.5 // indirect
+	github.com/golang/mock v1.6.0
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
@@ -22,5 +23,5 @@ require (
 	github.com/xujiajun/nutsdb v0.5.0
 	golang.org/x/mod v0.5.0
 	golang.org/x/text v0.3.3
-	golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e
+	golang.org/x/tools v0.1.1
 )
