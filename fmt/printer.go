@@ -27,8 +27,6 @@ var (
 		Yellow,
 		Red,
 		Blue,
-		color.New(color.FgWhite, color.BgBlack, color.Bold).SprintFunc(),
-		color.New(color.FgBlack, color.BgWhite, color.Bold).SprintFunc(),
 	}
 )
 
