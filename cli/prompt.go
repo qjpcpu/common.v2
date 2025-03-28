@@ -23,14 +23,19 @@ const (
 	PromptTypeHistory    = "HISTORY"
 )
 
-type SelectWidget = promptui.Select
+type SelectWidget struct {
+	*promptui.Select
+	ReOrderChoicesByFreq bool
+}
 
 type SelectFn func(*SelectWidget)
 
 func FixedSelect(label string, choices []string, opt ...SelectFn) (int, string) {
-	prompt := promptui.Select{
-		Label: label,
-		Items: choices,
+	prompt := SelectWidget{
+		Select: &promptui.Select{
+			Label: label,
+			Items: choices,
+		},
 	}
 	for _, fn := range opt {
 		fn(&prompt)
@@ -46,16 +51,32 @@ func FixedSelect(label string, choices []string, opt ...SelectFn) (int, string) 
 	return -1, ""
 }
 
+func reOrderChoices(label string, choices []string, opts ...SelectFn) ([]string, func(int) int) {
+	prompt := SelectWidget{
+		Select: &promptui.Select{
+			Label: label,
+			Items: choices,
+		},
+	}
+	for _, fn := range opts {
+		fn(&prompt)
+	}
+	if prompt.ReOrderChoicesByFreq {
+		return reOrderChoicesByFreq(label, choices)
+	}
+	return choices, func(i int) int { return i }
+}
+
 // Select from menu
 func Select(label string, choices []string, opt ...SelectFn) (int, string) {
-	newChoices, hit := reOrderChoicesByFreq(label, choices)
+	newChoices, hit := reOrderChoices(label, choices, opt...)
 	idx, str := FixedSelect(label, newChoices, opt...)
 	return hit(idx), str
 }
 
 // SelectWithSearch from menu
 func SelectWithSearch(label string, choices []string, opt ...SelectFn) int {
-	newChoices, hit := reOrderChoicesByFreq(label, choices)
+	newChoices, hit := reOrderChoices(label, choices, opt...)
 	searchFunction := func(s *SelectWidget) {
 		s.Size = 20
 		s.HideSelected = true
@@ -132,6 +153,12 @@ func newInputOption() *inputOption {
 	p := new(inputOption)
 	p.validateFn = func(string) error { return nil }
 	return p
+}
+
+func ReOrderChoicesByFreq() SelectFn {
+	return func(o *SelectWidget) {
+		o.ReOrderChoicesByFreq = true
+	}
 }
 
 func WithRecentName(ns string) InputOption {
